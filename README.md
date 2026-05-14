@@ -3371,6 +3371,10 @@ shellcheck -s bash script.sh
 Do these in order — each one builds on the previous.
 
 ### Project 1: Calculator
+
+**What to build:** A script that asks the user for two numbers and an operator (`+`, `-`, `*`, `/`). Print the result. Handle division by zero. Use `bc` for decimal division.  
+**Concepts:** `read`, `case`, `$(( ))`, `bc`, exit codes.
+
 ```bash
 #!/bin/bash
 # Practice: variables, arithmetic, input, case
@@ -3392,6 +3396,10 @@ esac
 ```
 
 ### Project 2: Number Guessing Game
+
+**What to build:** Generate a random number between 1–100. Let the user guess up to 7 times. After each guess print "Too high", "Too low", or "Correct!". Show attempt count on win, reveal the number on loss.  
+**Concepts:** `$RANDOM`, `while` loop, `(( ))` arithmetic conditions, `exit`.
+
 ```bash
 #!/bin/bash
 # Practice: loops, conditionals, random numbers
@@ -3421,6 +3429,10 @@ exit 1
 ```
 
 ### Project 3: File Organizer
+
+**What to build:** Scan a directory and move files into subfolders by extension (`images/`, `videos/`, `docs/`, `archives/`, `other/`). Print how many files were moved.  
+**Concepts:** `find`, associative arrays, `mv`, string manipulation (`${file##*.}`).
+
 ```bash
 #!/bin/bash
 # Practice: file ops, arrays, loops, find
@@ -3451,6 +3463,10 @@ echo "Organized $moved files."
 ```
 
 ### Project 4: Log Parser
+
+**What to build:** Analyse a log file — print total lines, error count, warning count, top 5 error sources, and last 5 errors.  
+**Concepts:** `grep`, `awk`, `wc`, `sort`, `uniq`, pipes.
+
 ```bash
 #!/bin/bash
 # Practice: grep, awk, sed, pipes, text processing
@@ -3477,6 +3493,10 @@ grep -i "error" "$log_file" | tail -5
 ```
 
 ### Project 5: System Info Script
+
+**What to build:** Print a formatted system dashboard showing hostname, OS, kernel, uptime, and CPU/memory/disk usage as visual progress bars.  
+**Concepts:** command substitution, `top`, `free`, `df`, `printf` formatting, `bc`.
+
 ```bash
 #!/bin/bash
 # Practice: command substitution, formatting, text processing
@@ -3514,6 +3534,10 @@ echo "Disk (/):  $(bar $disk_pct)"
 ```
 
 ### Project 6: Backup Script
+
+**What to build:** Back up a source directory to a backup folder with a timestamped `.tar.gz` archive. Exclude `.cache` and `node_modules`. Auto-delete archives older than 7 days. Log every step.  
+**Concepts:** `tar`, `find`, `du`, logging pattern, `set -euo pipefail`.
+
 ```bash
 #!/bin/bash
 # Practice: find, tar, error handling, logging, cron-ready
@@ -3541,6 +3565,212 @@ log "Backup created: $BACKUP_FILE ($size)"
 # Remove old backups
 deleted=$(find "$BACKUP_DIR" -name "backup_*.tar.gz" -mtime +$KEEP_DAYS -print -delete | wc -l)
 log "Removed $deleted old backup(s) older than $KEEP_DAYS days"
+```
+
+### Project 7: Input Validator (Regex)
+```bash
+#!/bin/bash
+# Practice: regex, [[ =~ ]], BASH_REMATCH, BRE/ERE
+
+validate() {
+    local label="$1" value="$2" pattern="$3"
+    if [[ "$value" =~ $pattern ]]; then
+        echo "  ✓ $label: '$value' is valid"
+    else
+        echo "  ✗ $label: '$value' is invalid"
+    fi
+}
+
+echo "=== Input Validator ==="
+read -p "Enter an IPv4 address : " ip
+read -p "Enter an email address : " email
+read -p "Enter a date (YYYY-MM-DD): " date
+
+validate "IPv4 " "$ip"    '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+validate "Email" "$email" '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+validate "Date " "$date"  '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+
+# Bonus: extract date parts with BASH_REMATCH
+if [[ "$date" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})$ ]]; then
+    echo "  Year=${BASH_REMATCH[1]} Month=${BASH_REMATCH[2]} Day=${BASH_REMATCH[3]}"
+fi
+```
+
+### Project 8: Service Health Checker (Networking)
+
+**What to build:** A script that checks whether services are reachable by testing TCP ports (using `/dev/tcp`) and HTTP endpoints (using `curl`). Report each service as UP or DOWN with a summary count.  
+**Concepts:** `/dev/tcp` port checking, `curl` HTTP status codes, `timeout`, arrays, string manipulation (`${var%%:*}`, `${var##*:}`), `printf` formatting.
+
+```bash
+#!/bin/bash
+# Practice: ping, curl, ssh, /dev/tcp, exit codes
+set -euo pipefail
+
+SERVICES=(
+    "google.com:80"
+    "google.com:443"
+    "localhost:22"
+)
+URLS=(
+    "https://example.com"
+)
+
+check_port() {
+    timeout 3 bash -c "echo > /dev/tcp/$1/$2" 2>/dev/null
+}
+
+echo "=== Port Checks ==="
+up=0; down=0
+for svc in "${SERVICES[@]}"; do
+    host="${svc%%:*}"; port="${svc##*:}"
+    if check_port "$host" "$port"; then
+        printf "  %-25s [UP]\n"   "$svc"; ((up++))
+    else
+        printf "  %-25s [DOWN]\n" "$svc"; ((down++))
+    fi
+done
+echo "  Summary: $up up, $down down"
+
+echo ""
+echo "=== HTTP Checks ==="
+for url in "${URLS[@]}"; do
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" || echo "000")
+    printf "  %-35s [%s]\n" "$url" "$code"
+done
+```
+
+### Project 9: Package Setup Script (Package Management)
+
+**What to build:** A script that takes a list of required packages, detects the system's package manager (`apt`, `dnf`, `yum`, or `brew`), and installs only the packages that are not already present. Print a summary of installed vs skipped.  
+**Concepts:** `command -v`, cross-distro package manager detection, idempotent installs, arrays, logging, exit codes.
+
+```bash
+#!/bin/bash
+# Practice: apt/dnf/brew detection, idempotent installs, command -v
+set -euo pipefail
+
+REQUIRED=(git curl wget jq tree)
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+install_pkg() {
+    if command -v apt &>/dev/null;   then sudo apt install -y "$1"
+    elif command -v dnf &>/dev/null; then sudo dnf install -y "$1"
+    elif command -v yum &>/dev/null; then sudo yum install -y "$1"
+    elif command -v brew &>/dev/null; then brew install "$1"
+    else echo "No package manager found" >&2; return 1
+    fi
+}
+
+installed=0; skipped=0
+for pkg in "${REQUIRED[@]}"; do
+    if command -v "$pkg" &>/dev/null; then
+        log "SKIP $pkg (already installed)"
+        ((skipped++))
+    else
+        log "INSTALL $pkg"
+        install_pkg "$pkg"
+        ((installed++))
+    fi
+done
+
+echo ""
+log "Done — installed: $installed, skipped: $skipped"
+```
+
+### Project 10: Archive Manager (File Compression)
+
+**What to build:** A multi-purpose archive tool that can create, extract, or list the contents of compressed archives. Auto-detect the format (`.tar.gz`, `.tar.bz2`, `.tar.xz`, `.zip`, `.gz`) and use the correct tool for each.  
+**Concepts:** `tar`, `gzip`, `zip`/`unzip`, `case` pattern matching on file extensions, `du`, `mkdir -p`, string stripping (`${var%.tar.*}`).
+
+```bash
+#!/bin/bash
+# Practice: tar, gzip, zip, bzip2, xz, file extension detection
+set -euo pipefail
+
+usage() { echo "Usage: $0 [create|extract|list] <target>"; exit 1; }
+[[ $# -lt 2 ]] && usage
+
+action="$1"; target="$2"
+
+extract() {
+    local file="$1"
+    local dest="${file%.tar.*}"; dest="${dest%.zip}"; dest="${dest%.gz}"
+    mkdir -p "$dest"
+    case "$file" in
+        *.tar.gz)  tar -xzf "$file" -C "$dest" ;;
+        *.tar.bz2) tar -xjf "$file" -C "$dest" ;;
+        *.tar.xz)  tar -xJf "$file" -C "$dest" ;;
+        *.zip)     unzip -q "$file" -d "$dest"  ;;
+        *.gz)      gunzip -k "$file"             ;;
+        *) echo "Unknown format: $file" >&2; exit 1 ;;
+    esac
+    echo "Extracted to: $dest"
+}
+
+case "$action" in
+    create)  tar -czf "${target}.tar.gz" "$target" && echo "Created: ${target}.tar.gz ($(du -sh "${target}.tar.gz" | cut -f1))" ;;
+    extract) extract "$target" ;;
+    list)    tar -tzf "$target" ;;
+    *) usage ;;
+esac
+```
+
+### Project 11: Server Setup Script (All Stages Combined)
+
+**What to build:** A full server provisioning script that checks for root access, verifies internet connectivity, installs essential packages, creates an application user, sets up directory structure with correct permissions, and backs up existing config files. Combines every major concept from the guide.  
+**Concepts:** `set -euo pipefail`, `trap`, logging, `ping`, `command -v`, `useradd`/`id`, `mkdir -p`, `chown`/`chmod`, `tar` backup, exit codes, idempotent patterns.
+
+```bash
+#!/bin/bash
+# Practice: combines package mgmt, networking, permissions, users, compression
+set -euo pipefail
+
+readonly SCRIPT_NAME="$(basename "$0")"
+readonly LOG_FILE="/tmp/${SCRIPT_NAME%.sh}.log"
+
+log()  { echo "[$(date '+%H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
+err()  { echo "[$(date '+%H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; }
+die()  { err "$*"; exit 1; }
+
+cleanup() { log "Script finished."; }
+trap cleanup EXIT
+
+# 1. Check root
+[[ $EUID -eq 0 ]] || die "Run as root"
+
+# 2. Check connectivity
+log "Checking internet connectivity..."
+ping -c 1 -W 3 8.8.8.8 &>/dev/null || die "No internet connection"
+
+# 3. Install required packages
+for pkg in curl git vim; do
+    command -v "$pkg" &>/dev/null && log "SKIP $pkg" && continue
+    log "Installing $pkg..."
+    apt install -y "$pkg" 2>/dev/null || dnf install -y "$pkg" 2>/dev/null || \
+        err "Could not install $pkg"
+done
+
+# 4. Create app user if missing
+if ! id "appuser" &>/dev/null; then
+    useradd -m -s /bin/bash appuser
+    log "Created user: appuser"
+fi
+
+# 5. Set up directories with correct permissions
+mkdir -p /opt/app/{logs,backups,config}
+chown -R appuser:appuser /opt/app
+chmod 750 /opt/app
+log "Directory structure ready"
+
+# 6. Backup existing config if present
+if [[ -f /opt/app/config/app.conf ]]; then
+    tar -czf "/opt/app/backups/config_$(date +%Y%m%d_%H%M%S).tar.gz" \
+        /opt/app/config/
+    log "Config backed up"
+fi
+
+log "Server setup complete"
 ```
 
 ---
